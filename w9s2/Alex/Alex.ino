@@ -1,4 +1,4 @@
-left#include <serialize.h>
+#include <serialize.h>
 
 #include "packet.h"
 #include "constants.h"

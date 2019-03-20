@@ -19,7 +19,7 @@
 // Number of ticks per revolution from the 
 // wheel encoder.
 
-#define COUNTS_PER_REV      195
+#define COUNTS_PER_REV      192
 
 // Wheel circumference in cm.
 // We will use this to calculate forward/backward distance traveled 

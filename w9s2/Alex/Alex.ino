@@ -189,14 +189,24 @@ void enablePullups()
 // Functions to be called by INT0 and INT1 ISRs.
 void leftISR()
 {
-  leftTicks++;
+  if(dir == FORWARD){
+    leftForwardTicks++;
+    forwardDist = (unsigned long) ((float) leftForwardTicks / COUNTS_PER_REV * WHEEL_CIRC);
+  } else if (dir == BACKWARD){
+    leftReverseTicks++;
+    reverseDist = (unsigned long) ((float) leftReverseTicks / COUNTS_PER_REV * WHEEL_CIRC);
+  } else if (dir == RIGHT){
+    leftForwardTicksTurns++;
+  } else if (dir == LEFT){
+    leftReverseTicksTurns++;
+  }
 
-  leftRevs = leftTicks / COUNTS_PER_REV;
+//  leftRevs = leftTicks / COUNTS_PER_REV;
 
   // We calculate forwardDist only in leftISR because we
   // assume that the left and right wheels move at the same
   // time.
-  forwardDist = leftRevs * WHEEL_CIRC;
+//  forwardDist = leftRevs * WHEEL_CIRC;
   
   Serial.print("LEFT: ");
   Serial.println(leftTicks);
@@ -204,7 +214,15 @@ void leftISR()
 
 void rightISR()
 {
-  rightTicks++;
+  if(dir == FORWARD){
+    rightForwardTicks++;
+  } else if(dir == BACKWARD){
+    rightReverseTicks++;
+  } else if (dir == LEFT){
+    rightForwardTicksTurns++;
+  } else if (dir == RIGHT){
+    rightReverseTicksTurns++;
+  }
 
   rightRevs = rightTicks / COUNTS_PER_REV;
   Serial.print("RIGHT: ");
@@ -370,7 +388,7 @@ void forward(float dist, float speed)
 // continue reversing indefinitely.
 void reverse(float dist, float speed)
 {
-  dir = REVERSE;
+  dir = BACKWARD;
   
   int val = pwmVal(speed);
 
@@ -448,10 +466,16 @@ void stop()
 // Clears all our counters
 void clearCounters()
 {
-  leftTicks=0;
-  rightTicks=0;
-  leftRevs=0;
-  rightRevs=0;
+  leftForwardTicks=0;
+  rightForwardTicks=0;
+  leftReverseTicks=0;
+  rightReverseTicks=0;
+  leftForwardTicksTurns=0;
+  rightForwardTicksTurns=0;
+  leftReverseTicksTurns=0;
+  rightReverseTicksTurns=0;
+//  leftRevs=0;
+//  rightRevs=0;
   forwardDist=0;
   reverseDist=0; 
 }
@@ -566,7 +590,7 @@ void loop() {
 
 // Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2
 
- right(0, 100);
+ forward(0, 100);
 
 // Uncomment the code below for Week 9 Studio 2
 

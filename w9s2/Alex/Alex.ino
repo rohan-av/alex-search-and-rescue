@@ -93,7 +93,24 @@ void sendStatus()
   // Use the params array to store this information, and set the
   // packetType and command files accordingly, then use sendResponse
   // to send out the packet. See sendMessage on how to use sendResponse.
-  //
+  //h
+
+
+  TPacket statusPacket;
+  statusPacket.packetType = PACKET_TYPE_RESPONSE;
+  statusPacket.command = RESP_STATUS;
+  statusPacket.params[0] = leftForwardTicks;
+  statusPacket.params[1] = rightForwardTicks;
+  statusPacket.params[2] = leftReverseTicks;
+  statusPacket.params[3] = rightReverseTicks;
+  statusPacket.params[4] = leftForwardTicksTurns;
+  statusPacket.params[5] = rightForwardTicksTurns;
+  statusPacket.params[6] = leftReverseTicksTurns;
+  statusPacket.params[7] = rightReverseTicksTurns;
+  statusPacket.params[8] = forwardDist;
+  statusPacket.params[9] = reverseDist;
+
+  sendResponse(&statusPacket);
 }
 
 void sendMessage(const char *message)
@@ -450,7 +467,7 @@ void right(float ang, float speed)
 // Stop Alex. To replace with bare-metal code later.
 void stop()
 {
-  dir = STOP
+  dir = STOP;
   
   analogWrite(LF, 0);
   analogWrite(LR, 0);
@@ -504,22 +521,31 @@ void handleCommand(TPacket *command)
 
     case COMMAND_REVERSE:
       sendOK();
-      reverse((float) command->params[0], (float command->params[1]);
+      reverse((float) command->params[0], (float) command->params[1]);
       break;
       
     case COMMAND_TURN_LEFT:
       sendOK();
-      left((float) command->params[0], (float command->params[1]);
+      left((float) command->params[0], (float) command->params[1]);
       break;
       
     case COMMAND_TURN_RIGHT:
       sendOK();
-      right((float) command->params[0], (float command->params[1]);
+      right((float) command->params[0], (float) command->params[1]);
       break;
 
     case COMMAND_STOP:
       sendOK();
       stop();
+      break;
+
+    case COMMAND_GET_STATS:
+      sendStatus();
+      break;
+
+    case COMMAND_CLEAR_STATS:
+      sendOK();
+      clearOneCounter(command->params[0]);
       break;
         
     default:

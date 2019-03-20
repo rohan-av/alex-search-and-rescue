@@ -1,4 +1,4 @@
-#include <serialize.h>
+left#include <serialize.h>
 
 #include "packet.h"
 #include "constants.h"
@@ -207,9 +207,9 @@ void leftISR()
   // assume that the left and right wheels move at the same
   // time.
 //  forwardDist = leftRevs * WHEEL_CIRC;
-  
-  Serial.print("LEFT: ");
-  Serial.println(leftTicks);
+//  
+//  Serial.print("LEFT: ");
+//  Serial.println(leftTicks);
 }
 
 void rightISR()
@@ -224,9 +224,9 @@ void rightISR()
     rightReverseTicksTurns++;
   }
 
-  rightRevs = rightTicks / COUNTS_PER_REV;
-  Serial.print("RIGHT: ");
-  Serial.println(rightTicks);
+//  rightRevs = rightTicks / COUNTS_PER_REV;
+//  Serial.print("RIGHT: ");
+//  Serial.println(rightTicks);
 }
 
 // Set up the external interrupt pins INT0 and INT1
@@ -353,7 +353,7 @@ int pwmVal(float speed)
   if(speed > 100.0)
     speed = 100.0;
 
-  return (int) (speed / 100.0) * 255.0;
+  return (int) ((speed / 100.0) * 255.0);
 }
 
 // Move Alex forward "dist" cm at speed "speed".
@@ -498,14 +498,29 @@ void handleCommand(TPacket *command)
   {
     // For movement commands, param[0] = distance, param[1] = speed.
     case COMMAND_FORWARD:
-        sendOK();
-        forward((float) command->params[0], (float) command->params[1]);
+      sendOK();
+      forward((float) command->params[0], (float) command->params[1]);
       break;
 
-    /*
-     * Implement code for other commands here.
-     * 
-     */
+    case COMMAND_REVERSE:
+      sendOK();
+      reverse((float) command->params[0], (float command->params[1]);
+      break;
+      
+    case COMMAND_TURN_LEFT:
+      sendOK();
+      left((float) command->params[0], (float command->params[1]);
+      break;
+      
+    case COMMAND_TURN_RIGHT:
+      sendOK();
+      right((float) command->params[0], (float command->params[1]);
+      break;
+
+    case COMMAND_STOP:
+      sendOK();
+      stop();
+      break;
         
     default:
       sendBadCommand();
@@ -590,11 +605,11 @@ void loop() {
 
 // Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2
 
- forward(0, 100);
+// forward(0, 100);
 
 // Uncomment the code below for Week 9 Studio 2
 
-/*
+
  // put your main code here, to run repeatedly:
   TPacket recvPacket; // This holds commands from the Pi
 
@@ -613,5 +628,5 @@ void loop() {
         sendBadChecksum();
       } 
       
-      */
+      
 }

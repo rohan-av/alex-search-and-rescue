@@ -60,7 +60,9 @@ volatile unsigned long rightRevs;
 volatile unsigned long forwardDist;
 volatile unsigned long reverseDist;
 
-
+// Variables to keep track of whether we have moved a commanded distance
+unsigned long deltaDist;
+unsigned long newDist;
 /*
  * 
  * Alex Communication Routines.
@@ -208,10 +210,9 @@ void leftISR()
 {
   if(dir == FORWARD){
     leftForwardTicks++;
-    forwardDist = (unsigned long) ((float) leftForwardTicks / COUNTS_PER_REV * WHEEL_CIRC);
+    
   } else if (dir == BACKWARD){
     leftReverseTicks++;
-    reverseDist = (unsigned long) ((float) leftReverseTicks / COUNTS_PER_REV * WHEEL_CIRC);
   } else if (dir == RIGHT){
     leftForwardTicksTurns++;
   } else if (dir == LEFT){
@@ -233,8 +234,10 @@ void rightISR()
 {
   if(dir == FORWARD){
     rightForwardTicks++;
+    forwardDist = (unsigned long) ((float) rightForwardTicks / COUNTS_PER_REV * WHEEL_CIRC);
   } else if(dir == BACKWARD){
     rightReverseTicks++;
+    reverseDist = (unsigned long) ((float) rightReverseTicks / COUNTS_PER_REV * WHEEL_CIRC);
   } else if (dir == LEFT){
     rightForwardTicksTurns++;
   } else if (dir == RIGHT){
@@ -243,7 +246,7 @@ void rightISR()
 
 //  rightRevs = rightTicks / COUNTS_PER_REV;
 //  Serial.print("RIGHT: ");
-//  Serial.println(rightTicks);
+//  Serial.println(rightForwardTicks);
 }
 
 // Set up the external interrupt pins INT0 and INT1
@@ -338,8 +341,7 @@ void setupMotors()
    *    B1IN - Pin 10, PB2, OC1B
    *    B2In - pIN 11, PB3, OC2A
    */
-   DDRD |= 01100000;
-   DDRB |= 00001100;
+
 }
 
 // Start the PWM for Alex's motors.
@@ -380,6 +382,13 @@ int pwmVal(float speed)
 // continue moving forward indefinitely.
 void forward(float dist, float speed)
 {
+  if(dist == 0)
+    deltaDist = 999999;
+  else
+    deltaDist = dist;
+
+  newDist = forwardDist + deltaDist;
+  
   dir = FORWARD;
   
   int val = pwmVal(speed);
@@ -393,7 +402,7 @@ void forward(float dist, float speed)
   // This will be replaced later with bare-metal code.
   
   analogWrite(LF, val);
-  analogWrite(RF, val);
+  analogWrite(RF, val*0.8);
   analogWrite(LR,0);
   analogWrite(RR, 0);
 }
@@ -405,6 +414,13 @@ void forward(float dist, float speed)
 // continue reversing indefinitely.
 void reverse(float dist, float speed)
 {
+  if(dist == 0)
+    deltaDist = 9999999;
+  else
+    deltaDist = dist;
+
+  newDist = reverseDist + deltaDist;
+  
   dir = BACKWARD;
   
   int val = pwmVal(speed);
@@ -417,7 +433,7 @@ void reverse(float dist, float speed)
   // RF = Right forward pin, RR = Right reverse pin
   // This will be replaced later with bare-metal code.
   analogWrite(LR, val);
-  analogWrite(RR, val);
+  analogWrite(RR, val*0.8);
   analogWrite(LF, 0);
   analogWrite(RF, 0);
 }
@@ -429,6 +445,14 @@ void reverse(float dist, float speed)
 // turn left indefinitely.
 void left(float ang, float speed)
 {
+  if(ang == 0)
+    deltaDist = 9999999;
+  else
+    deltaDist = (unsigned long) (ang/360.0 * 32.98);
+
+  newDist = forwardDist + deltaDist;
+  
+  
   dir = LEFT;
   
   int val = pwmVal(speed);
@@ -627,16 +651,17 @@ void handlePacket(TPacket *packet)
   }
 }
 
+int count = 0;
+
 void loop() {
 
 // Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2
 
-// forward(0, 100);
 
 // Uncomment the code below for Week 9 Studio 2
 
 
- // put your main code here, to run repeatedly:
+//  put your main code here, to run repeatedly:
   TPacket recvPacket; // This holds commands from the Pi
 
   TResult result = readPacket(&recvPacket);
@@ -652,7 +677,37 @@ void loop() {
       if(result == PACKET_CHECKSUM_BAD)
       {
         sendBadChecksum();
-      } 
-      
+      }
+
+  if(deltaDist > 0){
+    //Serial.println(deltaDist);
+    if(dir == FORWARD){
+      if(forwardDist > newDist){
+        deltaDist = 0;
+        newDist = 0;
+        stop(); 
+      }
+    } else
+      if(dir == BACKWARD){
+        if(reverseDist > newDist){
+          deltaDist=0;
+          newDist = 0;
+          stop();
+        }
+      }
+     else
+        if(dir == STOP){
+          deltaDist = 0;
+          newDist = 0;
+          stop();
+        }
+     else
+        if(dir == LEFT){
+          deltaDist = 0;
+          newDist = 0;
+          stop();
+        }
+    
+  }    
       
 }

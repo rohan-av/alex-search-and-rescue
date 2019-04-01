@@ -142,7 +142,7 @@ void sendMessage(const char *message)
 void sendBadPacket()
 {
   // Tell the Pi that it sent us a packet with a bad
-  // magic number
+  // magic number.
 
   TPacket badPacket;
   badPacket.packetType = PACKET_TYPE_ERROR;

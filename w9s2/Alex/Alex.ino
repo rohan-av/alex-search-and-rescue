@@ -36,10 +36,10 @@ volatile TDirection dir = STOP;
 
 // Motor control pins. You need to adjust these till
 // Alex moves in the correct direction
-#define LF                  5   // Left forward pin
-#define LR                  6   // Left reverse pin
-#define RF                  10  // Right forward pin
-#define RR                  9  // Right reverse pin
+#define RR                  5   // Left forward pin
+#define RF                  6   // Left reverse pin
+#define LR                  10  // Right forward pin
+#define LF                  9  // Right reverse pin
 
 /*
       Alex's State Variables

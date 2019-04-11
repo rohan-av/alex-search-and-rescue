@@ -201,7 +201,7 @@ void sendNetworkData(const char *data, int len)
                handleNetworkData should already have set tls_conn to point to the TLS
                connection we want to write to. */
                
-               sslWrite(tls_conn, data, sizeof(data));
+               c = sslWrite(tls_conn, data, sizeof(data));
             /* END TODO */
 
         }
@@ -303,7 +303,7 @@ void *worker(void *conn)
     while(networkActive)
     {
         /* TODO: Implement SSL read into buffer */
-        sslRead(conn, buffer, sizeof(buffer)); //CAA 090419
+        len = sslRead(conn, buffer, sizeof(buffer)); //CAA 090419
 
         /* END TODO */
         // As long as we are getting data, network is active
@@ -357,7 +357,7 @@ int main()
        Alex's certificate. Use the #define names you defined earlier  */
     //createServer("alex.key", "alex.crt",SERVER_PORT, worker, "signing.pem", "322_laptop.lol.com",1);
     
-    createServer(serverPrivateKey, serverCertFname, SERVER_PORT, worker, caCertFname, clientNameOnCert, 1);
+    createServer(serverPrivateKey, serverCertFname, SERVER_PORT, &worker, caCertFname, clientNameOnCert, 1);
 
     /* TODO END */
 

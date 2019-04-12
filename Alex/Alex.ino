@@ -1,9 +1,13 @@
+
+
 #include <avr/sleep.h>
 #include <serialize.h>
 #include <math.h>
 
 #include "packet.h"
 #include "constants.h"
+#include "buffer.h"
+#include "buffer.cpp"
 
 /*
    Alex's configuration constants
@@ -52,6 +56,8 @@ volatile TDirection dir = STOP;
 #define RF                  10  // Right forward pin
 #define RR                  9  // Right reverse pin
 
+TBuffer _recvBuffer; //for serial comms
+TBuffer _xmitBuffer; //for serial comms
 /*
    Alex's State Variables
  */
@@ -84,6 +90,8 @@ unsigned long newDist;
 
 unsigned long deltaTicks;
 unsigned long targetTicks;
+
+
 
 /* Arduino Code for turning off Watchdog Timer (WDT) W11 Studio 2*/
 void WDT_off(void) { /* Global interrupt should be turned OFF here if not already done so */ 
@@ -337,6 +345,29 @@ void rightISR()
     //  Serial.println(rightForwardTicks);
 }
 
+// ISR for receive interrupt. Any data we get from UDR0 is written to the receive buffer.
+ISR(USART_RX_vect)
+{
+  unsigned char data = UDR0;
+  
+  //Note: This will fail silently and data will be lost if recvBuffer is full.
+  writeBuffer(&_recvBuffer, data);
+}
+
+// ISR for UDR0 empty interrupt. We get the next character from the trasmit buffer if any and write to UDR0.
+// Otherwise we disable the UDRE interrupt by writing a 0 to the UDRIE0 bit (bit 5) of UCSR0B
+ISR(USART_UDRE_vect)
+{
+  unsigned char data = UDR0;
+  TBufferResult result = readBuffer(&_xmitBuffer, &data);
+
+  if(result == BUFFER_OK)
+    UDR0 = data;
+  else
+    if(result == BUFFER_EMPTY)
+      UCSR0B &=0b11011111;
+}
+
 // Set up the external interrupt pins INT0 and INT1
 // for falling edge triggered. Use bare-metal.
 void setupEINT()
@@ -376,7 +407,10 @@ ISR(INT1_vect)
 void setupSerial()
 {
     // To replace later with bare-metal.
-    Serial.begin(57600);
+    UBRR0L = 16;
+    UBRR0H = 0;
+    UCSR0C = 0b00000110;
+    UCSR0A = 0;
 }
 
 // Start the serial connection. For now we are using
@@ -387,20 +421,27 @@ void startSerial()
 {
     // Empty for now. To be replaced with bare-metal code
     // later on.
-
+    UCSR0B = 0b10111000;
 }
 
 // Read the serial port. Returns the read character in
 // ch if available. Also returns TRUE if ch is valid.
 // This will be replaced later with bare-metal code.
 
-int readSerial(char *buffer)
+int readSerial(unsigned char *buffer)
 {
 
     int count = 0;
 
-    while (Serial.available())
-        buffer[count++] = Serial.read();
+    TBufferResult result;
+
+    do
+    {
+       result = readBuffer(&_recvBuffer, &buffer[count]);
+
+       if(result == BUFFER_OK)
+        count++;
+    } while (result == BUFFER_OK);
 
     return count;
 }
@@ -410,8 +451,16 @@ int readSerial(char *buffer)
 
 void writeSerial(const char *buffer, int len)
 {
-    Serial.write(buffer, len);
-}
+  TBufferResult result == BUFFER_OK;
+
+  int i;
+
+  for(i=1; i < size && result == BUFFER_OK; i++)
+    result = writeBuffer(&_xmitBuffer, buffer[i]);
+TBufferResult writeBuffer(TBuffer *buffer, unsigned char data)
+  UDR0 = buffer[0];
+
+  UCSR0B |= 0b00100000;
 
 /*
    Alex's motor drivers.
@@ -420,7 +469,7 @@ void writeSerial(const char *buffer, int len)
 
 // Set up Alex's motors. Right now this is empty, but
 // later you will replace it with code to set up the PWMs
-// to drive the motors.
+// to drive the motors.TBufferResult writeBuffer(TBuffer *buffer, unsigned char data)
 void setupMotors()
 {
     /* Our motor set up is:
@@ -773,7 +822,7 @@ void loop() {
     //  put your main code here, to run repeatedly:
     TPacket recvPacket; // This holds commands from the Pi
 
-    TResult result = readPacket(&recvPacket);
+    TResult result = readPacket(&_recvPacket);
 
     if (result == PACKET_OK)
         handlePacket(&recvPacket);

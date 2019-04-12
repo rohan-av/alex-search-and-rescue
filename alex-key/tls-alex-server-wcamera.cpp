@@ -88,8 +88,7 @@ bool check_red(Pixel p){
     return (p.red > 110 && p.green < 60 && p.blue < 60);
 }
 
-vector<int> check_object(){
-    vector<int>objects;
+void check_object(std::vector<int> objects){
     objects.push_back(0);
     objects.push_back(0);
     for (int j=0; j<1280; j++){
@@ -97,11 +96,11 @@ vector<int> check_object(){
             Pixel p = image[i][j];
             if (check_green(p)){
                 objects[0] = 1;
-                return objects;
+                //return objects;
             }
             else if (check_red(p)){
                 objects[1] = 1;
-                return objects;
+                //return objects;
             }    
         }
     }
@@ -289,49 +288,57 @@ void handleCommand(void *conn, const char *buffer)
     {
         case 'f':
         case 'F':
+        {
             commandPacket.command = COMMAND_FORWARD;
             uartSendPacket(&commandPacket);
             break;
-
+        }
         case 'b':
         case 'B':
+        {
             commandPacket.command = COMMAND_REVERSE;
             uartSendPacket(&commandPacket);
             break;
-
+        }
         case 'l':
         case 'L':
+        {
             commandPacket.command = COMMAND_TURN_LEFT;
             uartSendPacket(&commandPacket);
             break;
-
+        }
         case 'r':
         case 'R':
+        {
             commandPacket.command = COMMAND_TURN_RIGHT;
             uartSendPacket(&commandPacket);
             break;
-
+        }
         case 's':
         case 'S':
+        {
             commandPacket.command = COMMAND_STOP;
             uartSendPacket(&commandPacket);
             break;
-
+        }
         case 'c':
         case 'C':
+        {
             commandPacket.command = COMMAND_CLEAR_STATS;
             commandPacket.params[0] = 0;
             uartSendPacket(&commandPacket);
             break;
-
+        }
         case 'g':
         case 'G':
+        {
             commandPacket.command = COMMAND_GET_STATS;
             uartSendPacket(&commandPacket);
             break;
-        
+        }
         case 'k':
         case 'K':
+        {
         	Camera.grab();
         	unsigned char *cam_data = new unsigned char[Camera.getImageTypeSize(raspicam::RASPICAM_FORMAT_RGB)];
         	Camera.retrieve(cam_data,raspicam::RASPICAM_FORMAT_RGB);
@@ -342,8 +349,8 @@ void handleCommand(void *conn, const char *buffer)
 		        cam_data[i*3+2]=temp;
 		    }
 		    parse(cam_data);
-		    parse(data);
-		    vector<int> res = check_object();
+		    std::vector<int> res;
+            check_object(res);
 		
 		    if (res[0]==1){
 		        printf("Green object identified.\n");
@@ -366,7 +373,7 @@ void handleCommand(void *conn, const char *buffer)
 		    	sendNetworkData(data, sizeof(data));
 		    }
 		    delete cam_data;
-
+        }
         default:
             printf("Bad command\n");
 

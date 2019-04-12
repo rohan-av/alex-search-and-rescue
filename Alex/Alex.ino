@@ -7,7 +7,6 @@
 #include "packet.h"
 #include "constants.h"
 #include "buffer.h"
-#include "buffer.cpp"
 
 /*
    Alex's configuration constants
@@ -91,6 +90,7 @@ unsigned long newDist;
 unsigned long deltaTicks;
 unsigned long targetTicks;
 
+volatile long val;
 
 
 /* Arduino Code for turning off Watchdog Timer (WDT) W11 Studio 2*/
@@ -173,9 +173,13 @@ TResult readPacket(TPacket *packet)
     // data in "packet".
 
     char buffer[PACKET_SIZE];
+    unsigned char temp[PACKET_SIZE];
     int len;
-
-    len = readSerial(buffer);
+    
+    len = readSerial(temp);
+    for(int i = 0; i < PACKET_SIZE; i++){
+      
+    }
 
     if (len == 0)
         return PACKET_INCOMPLETE;
@@ -363,7 +367,7 @@ ISR(USART_UDRE_vect)
 
   if(result == BUFFER_OK)
     UDR0 = data;
-  else
+  else;
     if(result == BUFFER_EMPTY)
       UCSR0B &=0b11011111;
 }
@@ -394,6 +398,26 @@ ISR(INT1_vect)
     rightISR();
 }
 
+ISR(TIMER0_COMPA_vect)
+{
+  OCR0A = val;  
+}
+
+ISR(TIMER0_COMPB_vect)
+{
+  OCR0B = val;
+}
+
+
+ISR(TIMER1_COMPA_vect)
+{
+  OCR1AL = val;  
+}
+
+ISR(TIMER1_COMPB_vect)
+{
+  OCR1BL = val;
+}
 
 // Implement INT0 and INT1 ISRs above.
 
@@ -451,16 +475,17 @@ int readSerial(unsigned char *buffer)
 
 void writeSerial(const char *buffer, int len)
 {
-  TBufferResult result == BUFFER_OK;
+  TBufferResult result = BUFFER_OK;
 
   int i;
 
-  for(i=1; i < size && result == BUFFER_OK; i++)
+  for(i=1; i < PACKET_SIZE && result == BUFFER_OK; i++)
     result = writeBuffer(&_xmitBuffer, buffer[i]);
-TBufferResult writeBuffer(TBuffer *buffer, unsigned char data)
+
   UDR0 = buffer[0];
 
   UCSR0B |= 0b00100000;
+}
 
 /*
    Alex's motor drivers.
@@ -519,29 +544,25 @@ int pwmVal(float speed)
 // continue moving forward indefinitely.
 void forward(float dist, float speed)
 {
-    if (dist == 0)
-        deltaDist = 999999;
-    else
-        deltaDist = dist;
+  
+  if (dist == 0)
+    deltaDist = 999999;
+  else
+    deltaDist = dist;
 
-    newDist = forwardDist + deltaDist;
+  newDist = forwardDist + deltaDist;
 
-    dir = FORWARD;
+  dir = FORWARD;
 
-    int val = pwmVal(speed);
+   val = pwmVal(speed);
 
-    // For now we will ignore dist and move
-    // forward indefinitely. We will fix this
-    // in Week 9.
-
-    // LF = Left forward pin, LR = Left reverse pin
-    // RF = Right forward pin, RR = Right reverse pin
-    // This will be replaced later with bare-metal code.
-
-    analogWrite(LF, val);
-    analogWrite(RF, val * 0.8);
-    analogWrite(LR, 0);
-    analogWrite(RR, 0);
+  // LF = Left forward pin, LR = Left reverse pin
+  // RF = Right forward pin, RR = Right reverse pin
+  // This will be replaced later with bare-metal code.
+//  OCR0A = val;
+//  OCR1AL = val;
+  TCCR0A |= 0b10000000; //set OCR0A LF
+  TCCR1A |= 0b10000000; //set OCR1A RF
 }
 
 // Reverse Alex "dist" cm at speed "speed".
@@ -551,34 +572,30 @@ void forward(float dist, float speed)
 // continue reversing indefinitely.
 void reverse(float dist, float speed)
 {
-    if (dist == 0)
-        deltaDist = 9999999;
-    else
-        deltaDist = dist;
+  if (dist == 0)
+    deltaDist = 9999999;
+  else
+    deltaDist = dist;
 
-    newDist = reverseDist + deltaDist;
+  newDist = reverseDist + deltaDist;
 
-    dir = BACKWARD;
+  dir = BACKWARD;
 
-    int val = pwmVal(speed);
+   val = pwmVal(speed);
 
-    // For now we will ignore dist and
-    // reverse indefinitely. We will fix this
-    // in Week 9.
-
-    // LF = Left forward pin, LR = Left reverse pin
-    // RF = Right forward pin, RR = Right reverse pin
-    // This will be replaced later with bare-metal code.
-    analogWrite(LR, val);
-    analogWrite(RR, val * 0.8);
-    analogWrite(LF, 0);
-    analogWrite(RF, 0);
+  // LF = Left forward pin, LR = Left reverse pin
+  // RF = Right forward pin, RR = Right reverse pin
+  // This will be replaced later with bare-metal code.
+//  OCR0B = val;
+//  OCR1BL = val;
+  TCCR0A |= 0b00100000; //set OCR0B LR
+  TCCR1A |= 0b00100000; //set OCR1B RR
 }
 
 unsigned long computeDeltaTicks(float ang) {
-    unsigned long ticks = (unsigned long) ((ang * AlexCirc * COUNTS_PER_REV) / (360.0 * WHEEL_CIRC));
+  unsigned long ticks = (unsigned long) ((ang * AlexCirc * COUNTS_PER_REV) / (360.0 * WHEEL_CIRC));
 
-    return ticks;
+  return ticks;
 }
 
 
@@ -589,28 +606,24 @@ unsigned long computeDeltaTicks(float ang) {
 // turn left indefinitely.
 void left(float ang, float speed)
 {
-    int val = pwmVal(speed);
+   val = pwmVal(speed);
 
-    dir = LEFT;
+  dir = LEFT;
 
-    if (ang == 0)
-        deltaTicks = 9999999;
-    else
-        deltaTicks = computeDeltaTicks(ang);
+  if (ang == 0)
+    deltaTicks = 9999999;
+  else
+    deltaTicks = computeDeltaTicks(ang);
 
-    targetTicks = leftReverseTicksTurns + deltaTicks;
-
-
-
-
-    // For now we will ignore ang. We will fix this in Week 9.
-    // We will also replace this code with bare-metal later.
-    // To turn left we reverse the left wheel and move
-    // the right wheel forward.
-    analogWrite(LR, val);
-    analogWrite(RF, val * 0.8);
-    analogWrite(LF, 0);
-    analogWrite(RR, 0);
+  targetTicks = leftReverseTicksTurns + deltaTicks;
+  // For now we will ignore ang. We will fix this in Week 9.
+  // We will also replace this code with bare-metal later.
+  // To turn left we reverse the left wheel and move
+  // the right wheel forward.
+//  OCR0B = val;
+//  OCR1AL = val;
+  TCCR0A |= 0b00100000; //set OCR0B LR
+  TCCR1A |= 0b10000000; //set OCR1A RF
 }
 
 // Turn Alex right "ang" degrees at speed "speed".
@@ -620,39 +633,37 @@ void left(float ang, float speed)
 // turn right indefinitely.
 void right(float ang, float speed)
 {
-    dir = RIGHT;
+  dir = RIGHT;
 
-    int val = pwmVal(speed);
+     val = pwmVal(speed);
 
 
-    if (ang == 0)
-        deltaTicks = 9999999;
-    else
-        deltaTicks = computeDeltaTicks(ang);
+  if (ang == 0)
+    deltaTicks = 9999999;
+  else
+    deltaTicks = computeDeltaTicks(ang);
 
-    targetTicks = rightReverseTicksTurns + deltaTicks;
+  targetTicks = rightReverseTicksTurns + deltaTicks;
 
-    // For now we will ignore ang. We will fix this in Week 9.
-    // We will also replace this code with bare-metal later.
-    // To turn right we reverse the right wheel and move
-    // the left wheel forward.
-    analogWrite(RR, val * 0.8);
-    analogWrite(LF, val);
-    analogWrite(LR, 0);
-    analogWrite(RF, 0);
+  // For now we will ignore ang. We will fix this in Week 9.
+  // We will also replace this code with bare-metal later.
+  // To turn right we reverse the right wheel and move
+  // the left wheel forward.
+//  OCR0A = val;
+//  OCR1BL = val;
+  TCCR0A |= 0b10000000; //set OCR0A LF
+  TCCR1A |= 0b00100000; //set OCR1B RR
 }
 
 // Stop Alex. To replace with bare-metal code later.
 void stop()
 {
-    dir = STOP;
-
-    analogWrite(LF, 0);
-    analogWrite(LR, 0);
-    analogWrite(RF, 0);
-    analogWrite(RR, 0);
+  dir = STOP;
+  TCCR0A &= 0b00001111;
+  TCCR1A &= 0b00001111;
+  PORTD &= ~(LR | LF);
+  PORTB &= ~(RR | RF);
 }
-
 /*
    Alex's setup and run codes
 
@@ -822,7 +833,7 @@ void loop() {
     //  put your main code here, to run repeatedly:
     TPacket recvPacket; // This holds commands from the Pi
 
-    TResult result = readPacket(&_recvPacket);
+    TResult result = readPacket(&recvPacket);
 
     if (result == PACKET_OK)
         handlePacket(&recvPacket);

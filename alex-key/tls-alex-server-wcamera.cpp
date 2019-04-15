@@ -12,7 +12,9 @@
 #include <iostream>
 #include <unistd.h>
 #include <raspicam/raspicam.h>
-#include <vector>
+
+//RPi GPIO
+#include <wiringPi.h>
 
 /* TODO: Set PORT_NAME to the port name of your Arduino */
 #define PORT_NAME			"/dev/ttyACM0"
@@ -66,40 +68,40 @@ typedef struct Pixel{
 
 Pixel image[960][1280];
 raspicam::RaspiCam Camera; //Camera object
+int res[2] = {0, 0};
 
 void parse(unsigned char *data){
     for (int i=0;i<960;i++){
         for(int j=0; j<1280; j++){
             Pixel p;
             p.red = (unsigned int)data[1280*3*i+3*j];
-            p.blue = (unsigned int)data[1280*3*i+3*j+1];
-            p.green = (unsigned int)data[1280*3*i+3*j+2];
+            p.green = (unsigned int)data[1280*3*i+3*j+1];
+            p.blue = (unsigned int)data[1280*3*i+3*j+2];
             image[i][j] = p;
         }
     }
 }
 
 bool check_green(Pixel p){
-    return (p.green > 80 && p.red < 20); // && p.blue < 60);
-//    return (p.green > 60 && p.green > p.red + p.blue);
+  //  return (p.green > 80 && p.red < 20); // && p.blue < 60);
+  return (p.green > 100  && p.red < 60 && p.blue < 60);
 }
 
 bool check_red(Pixel p){
     return (p.red > 110 && p.green < 60 && p.blue < 60);
 }
 
-void check_object(std::vector<int> objects){
-    objects.push_back(0);
-    objects.push_back(0);
+void check_object(){
     for (int j=0; j<1280; j++){
         for (int i=0; i<960; i++){
             Pixel p = image[i][j];
+//            std::cout << p.red << ", " << p.green << ", " << p.blue << std::endl;
             if (check_green(p)){
-                objects[0] = 1;
+                res[0] = 1;
                 //return objects;
             }
             else if (check_red(p)){
-                objects[1] = 1;
+                res[1] = 1;
                 //return objects;
             }    
         }
@@ -135,7 +137,7 @@ void handleStatus(TPacket *packet)
 
 void handleResponse(TPacket *packet)
 {
-    // The response code is stored in command
+// The response code is stored in command
     switch(packet->command)
     {
         case RESP_OK:
@@ -336,43 +338,69 @@ void handleCommand(void *conn, const char *buffer)
             uartSendPacket(&commandPacket);
             break;
         }
+	case 'M':
+	case 'm':
+	{
+	    digitalWrite(2, LOW);
+	    usleep(1000000);
+	    digitalWrite(2, HIGH);
+	    break;
+	}
         case 'k':
         case 'K':
         {
-        	Camera.grab();
-        	unsigned char *cam_data = new unsigned char[Camera.getImageTypeSize(raspicam::RASPICAM_FORMAT_RGB)];
-        	Camera.retrieve(cam_data,raspicam::RASPICAM_FORMAT_RGB);
-        	for (int i=0; i<Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB )/3; i++){
-        		//BGR -> RGB
-		        unsigned char temp = cam_data[i*3];
-		        cam_data[i*3]=cam_data[i*3+2];
-		        cam_data[i*3+2]=temp;
-		    }
-		    parse(cam_data);
-		    std::vector<int> res;
-            check_object(res);
-		
-		    if (res[0]==1){
-		        printf("Green object identified.\n");
-		    	char data[33];
-		    	data[0] = NET_MESSAGE_PACKET;
-		    	data[1] = 'g';
-		    	data[2] = 'r';
-		    	data[3] = 'e';
-		    	data[4] = 'e';
-		    	data[5] = 'n';
-		    	sendNetworkData(data, sizeof(data));
-		    }
-		    else if (res[1]==1){
-		        printf("Red object identified.\n");
-		        char data[33];
-		    	data[0] = NET_MESSAGE_PACKET;
-		    	data[1] = 'r';
-		    	data[2] = 'e';
-		    	data[3] = 'd';
-		    	sendNetworkData(data, sizeof(data));
-		    }
-		    delete cam_data;
+	    Camera.setAWB_RB(1,0.5);
+	    if ( !Camera.open()) {std::cerr<<"Error opening camera"<<std::endl;}
+	    usleep(3*1000000); 
+	    Camera.grab();
+	    unsigned char *cam_data = new unsigned char[Camera.getImageTypeSize(raspicam::RASPICAM_FORMAT_RGB)];
+	    Camera.retrieve(cam_data,raspicam::RASPICAM_FORMAT_RGB);
+	    for (int i=0; i<Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB )/3; i++){
+		    //BGR -> RGB
+		    unsigned char temp = cam_data[i*3];
+		    cam_data[i*3]=cam_data[i*3+2];
+		    cam_data[i*3+2]=temp;
+		}
+	    parse(cam_data);
+	    check_object();
+	    
+	    if (res[0]==1){
+		printf("Green object identified.\n");
+		char data[33];
+		data[0] = NET_MESSAGE_PACKET;
+		data[1] = 'g';
+		data[2] = 'r';
+		data[3] = 'e';
+		data[4] = 'e';
+		data[5] = 'n';
+		sendNetworkData(data, sizeof(data));
+	    }
+	    else if (res[1]==1){
+		printf("Red object identified.\n");
+		char data[33];
+		data[0] = NET_MESSAGE_PACKET;
+		data[1] = 'r';
+		data[2] = 'e';
+		data[3] = 'd';
+		sendNetworkData(data, sizeof(data));
+	    }
+            else{
+                printf("Unknown color!\n");
+                char data[33];
+                data[0] = NET_MESSAGE_PACKET;
+                data[1] = 'o';
+                data[2] = 'o';
+                data[3] = 'f';
+                sendNetworkData(data, sizeof(data));
+            }
+	    std::ofstream outFile ( "raspicam_image.ppm",std::ios::binary );
+	    outFile<<"P6\n"<<Camera.getWidth() <<" "<<Camera.getHeight() <<" 255\n";
+	    outFile.write ( ( char* ) cam_data, Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB ) );
+	    std::cout<<"Image saved at raspicam_image.ppm"<<std::endl;
+            res[0] = 0; //reset res
+            res[1] = 0;
+	    delete cam_data;
+            break;
         }
         default:
             printf("Bad command\n");
@@ -434,8 +462,11 @@ void sendHello()
 
 int main()
 {	
-	usleep(1000000); //Sleep for one second;
-	
+    usleep(1000000); //Sleep for one second;
+	    
+    wiringPiSetup(); //sets up GPIO for Arduino reset
+    pinMode (2, OUTPUT);
+    digitalWrite(2, HIGH); // set it up as HIGH; LOW will cause reset
     // Start the uartReceiveThread. The network thread is started by
     // createServer
 

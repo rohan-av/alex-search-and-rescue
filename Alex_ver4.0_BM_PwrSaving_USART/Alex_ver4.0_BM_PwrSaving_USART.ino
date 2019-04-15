@@ -316,7 +316,7 @@ ISR(TIMER1_COMPB_vect)
 ISR(USART_RX_vect)
 {
   char data = UDR0;
-
+  stop();
   writeBuffer(&_recvBuffer, data);
 }
 
@@ -435,6 +435,13 @@ void setupTimer() {
   TCCR1B = 0b00000001;
   TIMSK0 = 0b110;
   TIMSK1 = 0b110;
+
+/*  TCCR0A = 0b00000011; //fast PWM 64 Prescalar
+  TCCR1A = 0b00000001; //8bit fast PWM
+  TCCR0B = 0b00000011; //fast PWM 64 Prescalar
+  TCCR1B = 0b00001011;
+  TIMSK0 = 0b110;
+  TIMSK1 = 0b110;*/
 }
 
 /*
@@ -583,7 +590,7 @@ void left(float ang, float speed)
   else
     deltaTicks = computeDeltaTicks(ang);
 
-  targetTicks = leftReverseTicksTurns + deltaTicks;
+  targetTicks = rightForwardTicksTurns + deltaTicks;
 
   TCCR0A |= 0b00100000; //set OCR0B LR
   TCCR1A |= 0b10000000; //set OCR1A RF
@@ -830,7 +837,7 @@ void loop() {
 
   if (deltaTicks > 0) {
     if (dir == LEFT) {
-      if (leftReverseTicksTurns >= targetTicks) {
+      if (rightForwardTicksTurns >= targetTicks) {
         deltaTicks = 0;
         targetTicks = 0;
         stop();

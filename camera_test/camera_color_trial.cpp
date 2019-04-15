@@ -31,7 +31,7 @@ void parse(unsigned char *data){
 }
 
 bool check_green(Pixel p){
-    return (p.green > 80 && p.red < 20); // && p.blue < 60);
+    return (p.green > 100 && p.red < 60);
 //    return (p.green > 60 && p.green > p.red + p.blue);
 }
 

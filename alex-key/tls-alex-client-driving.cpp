@@ -8,6 +8,12 @@
 // Packet types, error codes, etc.
 #include "constants.h"
 
+// Ncurses to enable wasd controls 
+#include "ncurses.h"
+
+// sleep
+#include <unistd.h>
+
 // Tells us that the network is running.
 static volatile int networkActive=0;
 
@@ -153,14 +159,13 @@ void getParams(int32_t *params)
 	flushInput();
 }
 
-void *writerThread(void *conn)
-{
-	int quit=0;
 
-	while(!quit)
-	{
+void *writerThread(void *conn){
+	int quit = 0;
+
+	while (!quit){
 		char ch;
-		printf("Command (f=forward, b=reverse, l=turn left, r=turn right, s=stop, c=clear stats, g=get stats q=exit)\n");
+		printf("Command (w=drive mode, k=color, m=reset, f=forward, b=reverse, l=turn left, r=turn right, s=stop, c=clear stats, g=get stats q=exit)\n");
 		scanf("%c", &ch);
 
 		// Purge extraneous characters from input stream
@@ -168,10 +173,69 @@ void *writerThread(void *conn)
 
 		char buffer[10];
 		int32_t params[2];
+		
+		int cee = 'w';
+		bool invalid = false;
 
 		buffer[0] = NET_COMMAND_PACKET;
 		switch(ch)
 		{
+			case 'w':
+			case 'W':
+				{
+				initscr();
+				noecho();
+				while (cee!='q'){
+					//usleep(500000);
+					cee = getch();
+					params[0]=2;
+					params[1]=80;
+					switch(cee){
+						case 'w':
+						{
+							buffer[1]='f';
+							memcpy(&buffer[2], params, sizeof(params));
+							sendData(conn, buffer, sizeof(buffer));
+							break;
+						}
+						case 'a':
+						{
+							params[0]=10;
+                            params[1]=85;
+							buffer[1]='l';
+							memcpy(&buffer[2], params, sizeof(params));
+							sendData(conn, buffer, sizeof(buffer));
+							break;
+						}
+						case 's':
+						{
+							buffer[1]='b';
+							memcpy(&buffer[2], params, sizeof(params));
+							sendData(conn, buffer, sizeof(buffer));
+							break;
+						}
+						case 'd':
+						{
+							params[0]=10;
+							params[1]=75;
+							buffer[1]='r';
+							memcpy(&buffer[2], params, sizeof(params));
+							sendData(conn, buffer, sizeof(buffer));
+							break;
+						}
+						case 'q':
+							break;
+						default:
+							invalid = true;
+							printf("Invalid command. Press q to quit.");
+					}
+					if (cee =='q') break;
+					if (invalid) continue;
+				}
+				endwin();
+				clear();
+				break;
+			}
 			case 'f':
 			case 'F':
 			case 'b':
@@ -180,38 +244,54 @@ void *writerThread(void *conn)
 			case 'L':
 			case 'r':
 			case 'R':
+				{
 				getParams(params);
 				buffer[1] = ch;
 				memcpy(&buffer[2], params, sizeof(params));
 				sendData(conn, buffer, sizeof(buffer));
 				break;
+				}
 			case 's':
 			case 'S':
 			case 'c':
 			case 'C':
 			case 'g':
 			case 'G':
+			case 'k':
+			case 'K':
+			case 'm':
+			case 'M':
+				{
 				params[0]=0;
 				params[1]=0;
 				memcpy(&buffer[2], params, sizeof(params));
 				buffer[1] = ch;
 				sendData(conn, buffer, sizeof(buffer));
 				break;
+				}
 			case 'q':
 			case 'Q':
+				{
 				quit=1;
 				break;
+				}
 			default:
+				{
 				printf("BAD COMMAND\n");
+				}
 		}
 	}
-
 	printf("Exiting keyboard thread\n");
 
 	/* TODO: Stop the client loop and call EXIT_THREAD */
 	stopClient(); EXIT_THREAD(conn);
 	/* END TODO */
+
 }
+
+
+
+
 
 /* TODO: #define filenames for the client private key, certificatea,
 	 CA filename, etc. that you need to create a client */
@@ -221,12 +301,14 @@ void *writerThread(void *conn)
 #define caCertFname "signing.pem"
 
 //#define serverName "172.19.76.151"
-//#define SERVERNAMAE "172.19.76.151" //Using a new name for IP address, problem is that function connectToServer is also using serverName
+//#define SERVERNAME "172.19.76.151" //Using a new name for IP address, problem is that function connectToServer is also using serverName
 
 //#define SERVER_NAME "192.168.43.107" //CAA 080419
 
 //#define SERVER_NAME "172.17.200.254" //School WiFi
-#define SERVER_NAME "192.168.43.109"
+//#define SERVER_NAME "192.168.43.109"
+
+#define SERVER_NAME "172.20.10.13" //rohan's hotspot
 
 #define serverPort 5000
 #define verifyServer 1

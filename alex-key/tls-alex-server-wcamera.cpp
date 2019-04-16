@@ -84,7 +84,7 @@ void parse(unsigned char *data){
 
 bool check_green(Pixel p){
   //  return (p.green > 80 && p.red < 20); // && p.blue < 60);
-  return (p.green > 100  && p.red < 60 && p.blue < 60);
+  return (p.green > 100  && p.red <80&& p.blue < 80);
 }
 
 bool check_red(Pixel p){
@@ -98,10 +98,12 @@ void check_object(){
 //            std::cout << p.red << ", " << p.green << ", " << p.blue << std::endl;
             if (check_green(p)){
                 res[0] = 1;
+		return;
                 //return objects;
             }
             else if (check_red(p)){
                 res[1] = 1;
+		return;
                 //return objects;
             }    
         }
